@@ -5,7 +5,6 @@ const {
     ButtonStyle,
     EmbedBuilder,
     SlashCommandBuilder,
-    CollectorFilter
 } = require("discord.js");
 const sheets = require('../../auth.js');
 const config = require("../../config.json");
