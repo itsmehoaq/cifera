@@ -3,5 +3,11 @@
   "admins": [],
   "clientId": "",
   "spreadsheetId": "",
-  "whitelistRole": []
+  "whitelistRole": {
+    "Referee": "",
+    "Streamer": "",
+    "Commentator": ""
+  },
+  "customMapperCategory": "",
+  "customMapperRole": ""
 }
