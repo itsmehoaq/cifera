@@ -168,14 +168,17 @@ module.exports = {
         }
 
         const player1Id = interaction.user.id;
-        const player2Id = matchRow[columnToIndex(captainBColumn)];
         const expectedPlayer1Id = matchRow[columnToIndex(captainAColumn)];
-        if (player1Id !== expectedPlayer1Id && !(config.admins.includes(player1Id))) {
+        const expectedPlayer2Id = matchRow[columnToIndex(captainBColumn)]
+        if ((player1Id !== expectedPlayer1Id && player1Id !== expectedPlayer2Id) && !(config.admins.includes(player1Id))) {
             return interaction.reply({
                 content: "You are not authorized to reschedule this match.",
                 ephemeral: true,
             });
         }
+        let player2Id = expectedPlayer2Id;
+        if (player1Id === expectedPlayer2Id)
+            player2Id = expectedPlayer1Id;
 
         const unix_oldDateTime = `${matchRow[columnToIndex(dateColumn)]}`;
         let oldDateTime = formatDate(new Date(unix_oldDateTime * 1000));
