@@ -147,8 +147,9 @@ module.exports = {
     execute: async (interaction) => {
         const {options, user} = interaction;
         const matchID = options.getString("match_id");
-        const [day, month, year] = options.getString("date").split("/");
-        const [hour, minute] = options.getString("time").split(":");
+        let [day, month, year] = options.getString("date").split("/");
+        let [hour, minute] = options.getString("time").split(":");
+        hour = (hour - config.timezone + 24) % 24;
         if (!checkDate(day, month, year, hour, minute)) {
             return interaction.reply({
                 content: "Invalid date or time format. Please use the following format: DD/MM/YYYY HH:MM",
@@ -166,16 +167,16 @@ module.exports = {
                 ephemeral: true,
             });
         }
-
-        const player1Id = interaction.user.id;
+        const userInitiated = interaction.user.id;
         const expectedPlayer1Id = matchRow[columnToIndex(captainAColumn)];
         const expectedPlayer2Id = matchRow[columnToIndex(captainBColumn)]
-        if ((player1Id !== expectedPlayer1Id && player1Id !== expectedPlayer2Id) && !(config.admins.includes(player1Id))) {
+        if ((userInitiated !== expectedPlayer1Id && userInitiated !== expectedPlayer2Id) && !(config.admins.includes(userInitiated))) {
             return interaction.reply({
                 content: "You are not authorized to reschedule this match.",
                 ephemeral: true,
             });
         }
+        let player1Id = userInitiated;
         let player2Id = expectedPlayer2Id;
         if (player1Id === expectedPlayer2Id)
             player2Id = expectedPlayer1Id;
@@ -188,8 +189,8 @@ module.exports = {
             .setColor("#0099ff")
             .setTitle("Match Reschedule Request")
             .addFields(
-                {name: "Player 1", value: `<@${player1Id}>`, inline: true},
-                {name: "Player 2", value: `<@${player2Id}>`, inline: true},
+                {name: "Player 1", value: `<@${expectedPlayer1Id}>`, inline: true},
+                {name: "Player 2", value: `<@${expectedPlayer2Id}>`, inline: true},
                 {name: "Old time", value: `<t:${unix_oldDateTime}:f>`, inline: false},
                 {name: "New time", value: `<t:${newUnixTime}:f>`, inline: false}
             )
@@ -209,7 +210,7 @@ module.exports = {
         const row = new ActionRowBuilder().addComponents(confirmButton, denyButton);
 
         const response = await interaction.reply({
-            content: `‼️ **Reschedule Request** ‼️ \n <@${player1Id}>, <@${player2Id}>`,
+            content: `‼️ **Reschedule Request** ‼️ \n <@${expectedPlayer1Id}>, <@${expectedPlayer2Id}>`,
             embeds: [embed],
             components: [row],
         });
