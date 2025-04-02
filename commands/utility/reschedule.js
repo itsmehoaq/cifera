@@ -128,19 +128,19 @@ module.exports = {
         .addStringOption((option) =>
             option
                 .setName("match_id")
-                .setDescription("The ID of the match to reschedule")
+                .setDescription("Match ID to reschedule")
                 .setRequired(true)
         )
         .addStringOption((option) =>
             option
                 .setName("date")
-                .setDescription("The new date of the match, (DD/MM/YYYY)")
+                .setDescription("New date, (DD/MM/YYYY)")
                 .setRequired(true)
         )
         .addStringOption((option) =>
             option
                 .setName("time")
-                .setDescription("The new time of the match, (HH:MM)")
+                .setDescription("New time, (HH:MM)")
                 .setRequired(true)
         ),
 
@@ -219,7 +219,7 @@ module.exports = {
         try {
             const confirmation = await response.awaitMessageComponent({
                 filter: collectorFilter,
-                time: 60000,
+                time: 300000,
             });
             if (confirmation.customId === "confirm_reschedule") {
 
