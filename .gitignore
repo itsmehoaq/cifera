@@ -270,6 +270,6 @@ fabric.properties
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node,WebStorm,Intellij,vsc
 
-/service-account.json
+service-account.json
 config.json
 sheets-config.json
