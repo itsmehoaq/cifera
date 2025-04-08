@@ -1,8 +1,5 @@
 const {google} = require("googleapis");
 const {
-    ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle,
     EmbedBuilder,
     SlashCommandBuilder,
 } = require("discord.js");
@@ -20,14 +17,51 @@ const comm1Column = sheetsConfig.comm1Column;
 const comm2Column = sheetsConfig.comm2Column;
 const {getSpreadsheetData, updateSpreadsheetData} = require("../../modules/spreadsheetFunctions.js");
 const {columnToIndex} = require("../../modules/columnToIndex.js");
-
-// New constants
 const matchPingChannel = sheetsConfig.matchPingChannel;
 const matchPingCheck = sheetsConfig.matchPingCheckColumn;
 
+// Array of media links for match pings (mix of GIFs and videos)
+const matchMedia = [
+    // GIFs
+    "https://files.catbox.moe/ny528c.gif",
+    "https://files.catbox.moe/gprbs4.gif",
+    "https://files.catbox.moe/hkdni3.gif",
+    "https://files.catbox.moe/ttxqt6.gif",
+    "https://files.catbox.moe/vv6pcs.gif",
+
+    // mp4
+    "https://files.catbox.moe/s7erg6.mp4",
+    "https://files.catbox.moe/g1d4ns.mp4",
+    "https://files.catbox.moe/7pu966.mp4",
+    "https://files.catbox.moe/dl8wu7.mp4",
+    "https://files.catbox.moe/th0ftw.mp4",
+    "https://files.catbox.moe/ljumku.mp4",
+    "https://files.catbox.moe/h2wvns.mp4",
+    "https://files.catbox.moe/rjryqo.mp4",
+    "https://files.catbox.moe/jc1h42.mp4"
+];
+
+/**
+ * Get a random media link from the matchMedia array
+ * @returns {string} A random media URL
+ */
+function getRandomMedia() {
+    const randomIndex = Math.floor(Math.random() * matchMedia.length);
+    return matchMedia[randomIndex];
+}
+
+/**
+ * Check if the URL is a video file
+ * @param {string} url - The URL to check
+ * @returns {boolean} True if it's a video file
+ */
+function isVideoUrl(url) {
+    return url.endsWith('.mp4') || url.endsWith('.mov') || url.endsWith('.webm');
+}
+
 /**
  * Function to handle match pings
- * Pings captains and staff 30 minutes before the match time.
+ * Pings captains and staff before the match time.
  * @param {Object} client - Discord.js client instance
  */
 function match_ping(client) {
@@ -53,8 +87,8 @@ function match_ping(client) {
             // Calculate time difference in minutes
             const timeDifference = (matchTime - now) / (60 * 1000);
 
-            // Check if it's 30 minutes or less before the match
-            if (timeDifference <= 30 && timeDifference > 0) {
+            // Check if it's 15 minutes or less before the match
+            if (timeDifference <= 15 && timeDifference > 0) {
                 // Get all relevant IDs
                 const captainA = row[columnToIndex(captainAColumn)];
                 const captainB = row[columnToIndex(captainBColumn)];
@@ -65,25 +99,27 @@ function match_ping(client) {
                 const comm2 = row[columnToIndex(comm2Column)];
 
                 // Create ping message
-                let content = `⏰ **MATCH REMINDER - ${Math.round(timeDifference)} MINUTES** ⏰ \n`;
-                content += `Match ID: ${matchId}\n`;
+                let content = `## Match Reminder\n`;
 
                 // Mention captains
-                content += `**Captains**: <@${captainA}> vs <@${captainB}>\n`;
+                content += `**Captains**: <@${captainA}> <@${captainB}>\n`;
 
                 // Add staff mentions if available
                 if (referee) {
-                    content += `**Referee**: <@${referee}> `;
+                    content += `\n**Referee**: <@${referee}>`;
                 }
                 if (streamer) {
-                    content += `**Streamer**: <@${streamer}> `;
+                    content += `\n**Streamer**: <@${streamer}>`;
                 }
                 if (comm1) {
-                    content += `**Commentator 1**: <@${comm1}> `;
+                    content += `\n**Commentator**: <@${comm1}>`;
                 }
                 if (comm2) {
-                    content += `**Commentator 2**: <@${comm2}> `;
+                    content += ` <@${comm2}>`;
                 }
+
+                // Get a random media link
+                const mediaLink = getRandomMedia();
 
                 // Create embed
                 const embed = new EmbedBuilder()
@@ -97,19 +133,27 @@ function match_ping(client) {
                     .setTimestamp()
                     .setFooter({text: `Match starting in ${Math.round(timeDifference)} minutes.`});
 
+                // For GIFs, use the embed's setImage
+                if (!isVideoUrl(mediaLink)) {
+                    embed.setImage(mediaLink);
+                }
+
                 // Send ping to the designated channel
-                sendMatchPing(client, content, embed);
+                sendMatchPingWithMedia(client, content, embed, mediaLink, matchId);
 
                 // Add to list of pinged matches
                 matchesPinged.push(matchId);
 
                 // Update the spreadsheet to mark this match as pinged
-                // Make sure we're passing the value as an array of arrays for the Google Sheets API
-                const updatePromise = updateSpreadsheetData(
-                    matchSheet,
-                    `${matchPingCheck}${rowIndex + 2}:${matchPingCheck}${rowIndex + 2}`,
-                    [["TRUE"]]
-                );
+                // The row index in the sheet is rowIndex + 2 (accounting for header row and 0-indexing)
+                const rowNumber = rowIndex + 2;
+
+                // Create the range and values in the format expected by the API
+                const range = `${matchSheet}!${matchPingCheck}${rowNumber}:${matchPingCheck}${rowNumber}`;
+                const values = [["TRUE"]]; // Values as a 2D array
+
+                // Call updateSpreadsheetData with the correct format
+                const updatePromise = updateSpreadsheetData(range, values);
                 updatePromises.push(updatePromise);
             }
         });
@@ -140,6 +184,7 @@ async function force_match_ping(client, matchId) {
 
             if (currentMatchId === matchId) {
                 matchFound = true;
+                const rowIndex = i; // Store the row index for later use
 
                 // Get match details
                 const matchTimeUnix = row[columnToIndex(dateColumn)];
@@ -160,25 +205,27 @@ async function force_match_ping(client, matchId) {
                 const timeDifference = (matchTime - now) / (60 * 1000);
 
                 // Create ping message
-                let content = `⚠️ **MATCH ANNOUNCEMENT** ⚠️ \n`;
-                content += `Match ID: ${matchId}\n`;
+                let content = `## Match Reminder\n`;
 
                 // Mention captains
-                content += `**Captains**: <@${captainA}> vs <@${captainB}>\n`;
+                content += `**Captains**: <@${captainA}> <@${captainB}>\n`;
 
                 // Add staff mentions if available
                 if (referee) {
-                    content += `**Referee**: <@${referee}> `;
+                    content += `\n**Referee**: <@${referee}>`;
                 }
                 if (streamer) {
-                    content += `**Streamer**: <@${streamer}> `;
+                    content += `\n**Streamer**: <@${streamer}>`;
                 }
                 if (comm1) {
-                    content += `**Commentator 1**: <@${comm1}> `;
+                    content += `\n**Commentator**: <@${comm1}>`;
                 }
                 if (comm2) {
-                    content += `**Commentator 2**: <@${comm2}> `;
+                    content += ` <@${comm2}>`;
                 }
+
+                // Get a random media link
+                const mediaLink = getRandomMedia();
 
                 // Create embed
                 const embed = new EmbedBuilder()
@@ -190,20 +237,35 @@ async function force_match_ping(client, matchId) {
                         {name: "Team 2 Captain", value: `<@${captainB}>`, inline: true}
                     )
                     .setTimestamp()
-                    .setFooter({text: timeDifference > 0
+                    .setFooter({
+                        text: timeDifference > 0
                             ? `Match starting in ${Math.round(timeDifference)} minutes.`
-                            : "This match should have already started."});
+                            : "This match should have already started."
+                    });
+
+                // For GIFs, use the embed's setImage
+                if (!isVideoUrl(mediaLink)) {
+                    embed.setImage(mediaLink);
+                }
 
                 // Send ping to the designated channel
-                sendMatchPing(client, content, embed);
+                await sendMatchPingWithMedia(client, content, embed, mediaLink, matchId);
 
                 // Update the spreadsheet to mark this match as pinged
-                // Fix: Make sure we're passing the value as an array of arrays for the Google Sheets API
-                await updateSpreadsheetData(
-                    matchSheet,
-                    `${matchPingCheck}${i + 2}:${matchPingCheck}${i + 2}`,
-                    [["TRUE"]]
-                );
+                // The row index in the sheet is rowIndex + 2 (accounting for header row and 0-indexing)
+                const rowNumber = rowIndex + 2;
+
+                // Create the range and values in the format expected by the API
+                const range = `${matchSheet}!${matchPingCheck}${rowNumber}:${matchPingCheck}${rowNumber}`;
+                const values = [["TRUE"]]; // Values as a 2D array
+
+                console.log("Updating spreadsheet with:", {
+                    range: range,
+                    values: values
+                });
+
+                // Call updateSpreadsheetData with the correct format
+                await updateSpreadsheetData(range, values);
 
                 return true;
             }
@@ -220,27 +282,49 @@ async function force_match_ping(client, matchId) {
 }
 
 /**
- * Function to send match ping to the designated channel using Discord.js
+ * Function to send match ping with media handling
  * @param {Object} client - Discord.js client instance
  * @param {string} content - Message content
  * @param {Object} embed - Discord embed object
+ * @param {string} mediaLink - Link to media file
+ * @param {string} matchId - Match ID for reference
  */
-function sendMatchPing(client, content, embed) {
+async function sendMatchPingWithMedia(client, content, embed, mediaLink, matchId) {
     // Find the channel
     const channel = client.channels.cache.get(matchPingChannel);
 
-    if (channel) {
-        // Send the ping message with embed
-        channel.send({
+    if (!channel) {
+        console.error(`Match ping channel ${matchPingChannel} not found`);
+        return;
+    }
+
+    try {
+        // First, send the main message with embed
+        await channel.send({
             content: content,
             embeds: [embed]
-        }).then(() => {
-            console.log(`Match ping sent to channel ${channel.name}`);
-        }).catch(error => {
-            console.error(`Error sending match ping: ${error}`);
         });
-    } else {
-        console.error(`Match ping channel ${matchPingChannel} not found`);
+
+        // If it's a video, send it as a separate message with just the URL
+        // This ensures it embeds properly without showing in the main message
+        if (isVideoUrl(mediaLink)) {
+            await channel.send(mediaLink);
+        }
+
+        console.log(`Match ping sent to channel ${channel.name}`);
+    } catch (error) {
+        console.error(`Error sending match ping: ${error}`);
+
+        // If there's an error, try sending just the content without the media
+        try {
+            await channel.send({
+                content: content + "\n*(Note: Media failed to load)*",
+                embeds: [embed]
+            });
+            console.log(`Fallback match ping sent to channel ${channel.name}`);
+        } catch (fallbackError) {
+            console.error(`Error sending fallback match ping: ${fallbackError}`);
+        }
     }
 }
 
@@ -251,7 +335,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName("check")
-                .setDescription("Check for matches that are 30 minutes away or less")
+                .setDescription("Check for matches that are 15 minutes away or less")
         )
         .addSubcommand(subcommand =>
             subcommand
