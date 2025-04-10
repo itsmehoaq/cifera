@@ -130,7 +130,7 @@ async function handleDropCommand(interaction, matchRow, matchRowIndex) {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('match')
+        .setName('staff')
         .setDescription("Manage matches.")
         .addSubcommand(subcommand =>
             subcommand
