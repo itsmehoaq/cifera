@@ -158,7 +158,7 @@ module.exports = {
         }
         const newDateTime = `${day}/${month}/${year} ${hour}:${minute}`;
 
-        const rows = await getSpreadsheetData();
+        const rows = await getSpreadsheetData(matchSheet);
         const matchRow = rows.find((row) => row[columnToIndex(matchIdColumn)] === matchID);
         const matchRowIndex = rows.indexOf(matchRow) + 1;
         if (!matchRow) {

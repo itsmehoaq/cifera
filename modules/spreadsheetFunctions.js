@@ -3,9 +3,9 @@ const sheets = require("../auth");
 const sheetsConfig = require("../sheets-config.json");
 const matchSheet = sheetsConfig.sheetName;
 
-async function getSpreadsheetData() {
+async function getSpreadsheetData(sheetName) {
     const spreadsheetId = config.spreadsheetId;
-    const range = `'${matchSheet}'`;
+    const range = `'${sheetName}'`;
 
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId,

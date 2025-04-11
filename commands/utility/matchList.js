@@ -24,7 +24,7 @@ async function getUpcomingMatches(filters = {}) {
         const currentUnixTime = Math.floor(now.getTime() / 1000);
 
         // Get spreadsheet data
-        const rows = await getSpreadsheetData();
+        const rows = await getSpreadsheetData(matchSheet);
 
         // Filter and format upcoming matches
         let upcomingMatches = rows

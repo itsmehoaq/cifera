@@ -69,7 +69,7 @@ function match_ping(client) {
     const now = new Date();
 
     // Get spreadsheet data
-    return getSpreadsheetData().then(rows => {
+    return getSpreadsheetData(matchSheet).then(rows => {
         const matchesPinged = [];
         const updatePromises = [];
 
@@ -175,7 +175,7 @@ function match_ping(client) {
  */
 async function force_match_ping(client, matchId) {
     try {
-        const rows = await getSpreadsheetData();
+        const rows = await getSpreadsheetData(matchSheet);
         let matchFound = false;
 
         for (let i = 0; i < rows.length; i++) {
