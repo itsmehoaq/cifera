@@ -9,6 +9,7 @@ const {
 const sheets = require('../../auth.js');
 const config = require("../../config.json");
 const sheetsConfig = require('../../sheets-config.json');
+const matchSheet = sheetsConfig.sheetName;
 const matchIdColumn = sheetsConfig.matchIdColumn;
 const refereeColumn = sheetsConfig.refereeColumn;
 const streamerColumn = sheetsConfig.streamerColumn;
@@ -175,8 +176,8 @@ module.exports = {
                 )
         ),
     execute: async (interaction) => {
-        interaction.deferReply();
-        let rows = await getSpreadsheetData();
+        await interaction.deferReply();
+        let rows = await getSpreadsheetData(matchSheet);
         if (!checkValidUser(interaction)) {
             return interaction.editReply({
                 content: `:x: You are not authorized to use this command. (Missing **${interaction.options.getString('position')}** role)`,
