@@ -71,8 +71,7 @@ function match_ping(client) {
     // Get spreadsheet data
     return getSpreadsheetData(matchSheet).then(rows => {
         const matchesPinged = [];
-        const updatePromises = [];
-
+        const updatePromises = []
         rows.forEach((row, rowIndex) => {
             // Get match time from the sheet (converting Unix timestamp to Date)
             const matchTimeUnix = row[columnToIndex(dateColumn)];
@@ -146,7 +145,7 @@ function match_ping(client) {
 
                 // Update the spreadsheet to mark this match as pinged
                 // The row index in the sheet is rowIndex + 2 (accounting for header row and 0-indexing)
-                const rowNumber = rowIndex + 2;
+                const rowNumber = rowIndex + 1;
 
                 // Create the range and values in the format expected by the API
                 const range = `${matchSheet}!${matchPingCheck}${rowNumber}:${matchPingCheck}${rowNumber}`;
