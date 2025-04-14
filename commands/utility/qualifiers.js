@@ -28,7 +28,32 @@ function checkIfAlreadyInLobby(lobbyRow, userId) {
     return false;
 }
 
-function handleQualifiersJoin(interaction, lobbyRow, lobbyRowIndex) {
+function checkIfAlreadyInAnotherLobby(rows, userId) {
+    let inAnotherLobby = false;
+    for (const row of rows) {
+        for (let i = 0; i < qualifiersLobbySize; i++) {
+            const captainDiscordId = row[columnToIndex(qualifiersCaptainDiscordStartingColumn) + i];
+            if (captainDiscordId === userId) {
+                inAnotherLobby = true;
+                //leave lobby
+                const lobbyId = row[columnToIndex(qualifiersLobbyIdColumn)];
+                const lobbyRowIndex = rows.indexOf(row) + 1;
+                const columnFound = indexToColumn(columnToIndex(qualifiersCaptainDiscordStartingColumn) + i);
+                const range = `'${qualifiersSheet}'!${columnFound}${lobbyRowIndex}:${columnFound}${lobbyRowIndex}`;
+                const value = [['']];
+                updateSpreadsheetData(range, value)
+                    .then(() => {
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
+        }
+    }
+    return inAnotherLobby;
+}
+
+function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex) {
     let lobbyFound = false;
     let columnFound = '';
     if (checkIfAlreadyInLobby(lobbyRow, interaction.user.id)) {
@@ -52,19 +77,24 @@ function handleQualifiersJoin(interaction, lobbyRow, lobbyRowIndex) {
             ephemeral: true,
         });
     } else {
+        let replyContent = ``;
+        if (checkIfAlreadyInAnotherLobby(rows, interaction.user.id)) {
+            replyContent = `:warning: You have been removed from your previous lobby.\n`;
+        }
         const range = `'${qualifiersSheet}'!${columnFound}${lobbyRowIndex}:${columnFound}${lobbyRowIndex}`;
         const value = [[interaction.user.id]];
         updateSpreadsheetData(range, value)
             .then(() => {
+                replyContent += `:white_check_mark: You have joined the lobby **${interaction.options.getString('lobbyid')}**.`;
                 interaction.editReply({
-                    content: `:white_check_mark: You have joined the lobby **${interaction.options.getString('lobbyid')}**.`,
+                    content: replyContent,
                     ephemeral: true,
                 });
             })
             .catch((error) => {
                 console.error(error);
                 interaction.editReply({
-                    content: `:x: An error occurred while updating the spreadsheet.`,
+                    content: `${replyContent}:x: An error occurred while updating the spreadsheet.`,
                     ephemeral: true,
                 });
             });
@@ -153,7 +183,7 @@ module.exports = {
         }
         const lobbyRowIndex = rows.indexOf(lobbyRow) + 1;
         if (interaction.options.getSubcommand() === 'join') {
-            handleQualifiersJoin(interaction, lobbyRow, lobbyRowIndex);
+            handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex);
         } else {
             handleQualifiersLeave(interaction, lobbyRow, lobbyRowIndex);
         }
