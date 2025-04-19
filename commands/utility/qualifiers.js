@@ -28,32 +28,26 @@ function checkIfAlreadyInLobby(lobbyRow, userId) {
     return false;
 }
 
-function checkIfAlreadyInAnotherLobby(rows, userId) {
-    let inAnotherLobby = false;
+async function checkIfAlreadyInAnotherLobby(interaction, rows, userId) {
     for (const row of rows) {
         for (let i = 0; i < qualifiersLobbySize; i++) {
             const captainDiscordId = row[columnToIndex(qualifiersCaptainDiscordStartingColumn) + i];
             if (captainDiscordId === userId) {
-                inAnotherLobby = true;
                 //leave lobby
                 const lobbyId = row[columnToIndex(qualifiersLobbyIdColumn)];
                 const lobbyRowIndex = rows.indexOf(row) + 1;
                 const columnFound = indexToColumn(columnToIndex(qualifiersCaptainDiscordStartingColumn) + i);
                 const range = `'${qualifiersSheet}'!${columnFound}${lobbyRowIndex}:${columnFound}${lobbyRowIndex}`;
                 const value = [['']];
-                updateSpreadsheetData(range, value)
-                    .then(() => {
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
+                await updateSpreadsheetData(range, value)
+                return true;
             }
         }
     }
-    return inAnotherLobby;
+    return false;
 }
 
-function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex) {
+async function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex) {
     let lobbyFound = false;
     let columnFound = '';
     if (checkIfAlreadyInLobby(lobbyRow, interaction.user.id)) {
@@ -65,7 +59,6 @@ function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex) {
     for (let i = 0; i < qualifiersLobbySize; i++) {
         const captainDiscordId = lobbyRow[columnToIndex(qualifiersCaptainDiscordStartingColumn) + i];
         if (!captainDiscordId) {
-            lobbyRow[columnToIndex(qualifiersCaptainDiscordStartingColumn) + i] = interaction.user.id;
             columnFound = indexToColumn(columnToIndex(qualifiersCaptainDiscordStartingColumn) + i);
             lobbyFound = true;
             break;
@@ -78,14 +71,14 @@ function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex) {
         });
     } else {
         let replyContent = ``;
-        if (checkIfAlreadyInAnotherLobby(rows, interaction.user.id)) {
+        if (await checkIfAlreadyInAnotherLobby(interaction, rows, interaction.user.id)) {
             replyContent = `:warning: You have been removed from your previous lobby.\n`;
         }
         const range = `'${qualifiersSheet}'!${columnFound}${lobbyRowIndex}:${columnFound}${lobbyRowIndex}`;
         const value = [[interaction.user.id]];
         updateSpreadsheetData(range, value)
             .then(() => {
-                replyContent += `:white_check_mark: You have joined the lobby **${interaction.options.getString('lobbyid')}**.`;
+                replyContent += `:white_check_mark: You have joined the lobby **${interaction.options.getString('lobbyid').toUpperCase()}**.`;
                 interaction.editReply({
                     content: replyContent,
                     ephemeral: true,
@@ -124,7 +117,7 @@ function handleQualifiersLeave(interaction, lobbyRow, lobbyRowIndex) {
         updateSpreadsheetData(range, value)
             .then(() => {
                 interaction.editReply({
-                    content: `:white_check_mark: You have left the lobby **${interaction.options.getString('lobbyid')}**.`,
+                    content: `:white_check_mark: You have left the lobby **${interaction.options.getString('lobbyid').toUpperCase()}**.`,
                     ephemeral: true,
                 });
             })
@@ -166,7 +159,7 @@ module.exports = {
         ),
     execute: async (interaction) => {
         await interaction.deferReply();
-        const lobbyId = interaction.options.getString('lobbyid');
+        const lobbyId = interaction.options.getString('lobbyid').toUpperCase();
         if (!checkValidUser(interaction)) {
             return interaction.editReply({
                 content: ':x: You are not authorized to use this command.',
@@ -183,7 +176,7 @@ module.exports = {
         }
         const lobbyRowIndex = rows.indexOf(lobbyRow) + 1;
         if (interaction.options.getSubcommand() === 'join') {
-            handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex);
+            await handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex);
         } else {
             handleQualifiersLeave(interaction, lobbyRow, lobbyRowIndex);
         }
