@@ -2,7 +2,6 @@ const {EmbedBuilder, SlashCommandBuilder,} = require("discord.js");
 const sheetsConfig = require('../../sheets-config.json');
 const {getSpreadsheetData, updateSpreadsheetData} = require("../../modules/spreadsheetFunctions.js");
 const {columnToIndex} = require("../../modules/columnToIndex.js");
-const {indexToColumn} = require("../../modules/indexToColumn.js");
 const gachaSheetName = sheetsConfig.gachaSheetName;
 const gachaDiscordId = sheetsConfig.gachaDiscordId
 const gachaRCol = sheetsConfig.gachaRCol
@@ -161,9 +160,15 @@ module.exports = {
         newUrRate
       };
     }
+    if (interaction.channelId !== "1364558805500952770") { //yes i hardcoded stuff xddd
+      await interaction.reply({
+        content: "❌ Lệnh này chỉ có thể sử dụng trong channel <#1364558805500952770>!",
+        ephemeral: true
+      });
+      return;
+    }
     await interaction.deferReply();
     const userId = interaction.user.id;
-    const userName = interaction.user.username;
     const userInfo = await findUserRowInSheet(userId);
     if (userInfo.rowNumber > 0) {
       if (userInfo.hasRolled) {
