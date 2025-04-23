@@ -17,7 +17,7 @@ const comm1Column = sheetsConfig.comm1Column;
 const comm2Column = sheetsConfig.comm2Column;
 const {getSpreadsheetData, updateSpreadsheetData} = require("../../modules/spreadsheetFunctions.js");
 const {columnToIndex} = require("../../modules/columnToIndex.js");
-const matchPingChannel = sheetsConfig.matchPingChannel;
+const matchPingChannel = config.matchPingChannel;
 const matchPingCheck = sheetsConfig.matchPingCheckColumn;
 
 // Array of media links for match pings (mix of GIFs and videos)

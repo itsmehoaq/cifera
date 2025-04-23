@@ -7,16 +7,15 @@ const sheetsConfig = require("../../sheets-config.json");
 const dateColumn = sheetsConfig.dateColumn;
 const matchSheet = sheetsConfig.sheetName;
 const matchIdColumn = sheetsConfig.matchIdColumn;
+const teamAColumn = sheetsConfig.teamAColumn;
+const teamBColumn = sheetsConfig.teamBColumn;
 const refereeColumn = sheetsConfig.refereeColumn;
 const streamerColumn = sheetsConfig.streamerColumn;
+const comm1Column = sheetsConfig.comm1Column;
+const comm2Column = sheetsConfig.comm2Column;
 const {getSpreadsheetData} = require("../../modules/spreadsheetFunctions.js");
 const {columnToIndex} = require("../../modules/columnToIndex.js");
 
-/**
- * Function to get upcoming matches from the spreadsheet
- * @param {Object} filters - Filter options (referee, streamer)
- * @returns {Promise<Array>} Array of upcoming matches sorted by date
- */
 async function getUpcomingMatches(filters = {}) {
     try {
         // Get current time
@@ -37,8 +36,12 @@ async function getUpcomingMatches(filters = {}) {
                 return {
                     matchId: row[columnToIndex(matchIdColumn)],
                     matchTimeUnix: parseInt(row[columnToIndex(dateColumn)]),
+                    teamA: row[columnToIndex(teamAColumn)],
+                    teamB: row[columnToIndex(teamBColumn)],
                     referee: row[columnToIndex(refereeColumn)],
-                    streamer: row[columnToIndex(streamerColumn)]
+                    streamer: row[columnToIndex(streamerColumn)],
+                    comm1: row[columnToIndex(comm1Column)],
+                    comm2: row[columnToIndex(comm2Column)]
                 };
             });
 
@@ -64,6 +67,28 @@ async function getUpcomingMatches(filters = {}) {
             });
         }
 
+        // Apply comm1 filter if provided
+        if (filters.comm1) {
+            upcomingMatches = upcomingMatches.filter(match => {
+                if (filters.comm1.toLowerCase() === 'none') {
+                    return !match.comm1 || match.comm1.trim() === '';
+                } else {
+                    return match.comm1 === filters.comm1;
+                }
+            });
+        }
+
+        // Apply comm2 filter if provided
+        if (filters.comm2) {
+            upcomingMatches = upcomingMatches.filter(match => {
+                if (filters.comm1.toLowerCase() === 'none') {
+                    return !match.comm2 || match.comm2.trim() === '';
+                } else {
+                    return match.comm2 === filters.comm2;
+                }
+            });
+        }
+
         // Sort matches by date (earliest first)
         upcomingMatches.sort((a, b) => a.matchTimeUnix - b.matchTimeUnix);
 
@@ -74,16 +99,9 @@ async function getUpcomingMatches(filters = {}) {
     }
 }
 
-/**
- * Function to create match list embeds
- * @param {Array} matches - Array of match objects
- * @param {number} page - Page number to display
- * @param {Object} filters - Filter options that were applied
- * @returns {Object} Object containing embed and page information
- */
 function createMatchListEmbed(matches, page = 1, filters = {}) {
     // Define how many matches per page
-    const matchesPerPage = 8;
+    const matchesPerPage = 4;
     const totalPages = Math.ceil(matches.length / matchesPerPage);
 
     // Ensure page is within valid range
@@ -127,23 +145,31 @@ function createMatchListEmbed(matches, page = 1, filters = {}) {
                 filterInfo.push(`Streamer: <@${filters.streamer}>`);
             }
         }
+        // Add comm1 filter info
+        if (filters.comm1 || filters.comm2) {
+            if (filters.comm1.toLowerCase() === 'none' || filters.comm2.toLowerCase() === 'none') {
+                filterInfo.push("Showing matches needing commentators");
+            }
+        }
 
         // Add filter info as a field
         embed.addFields({ name: "Applied Filters", value: filterInfo.join('\n') });
     }
 
-    // Create a clean list of matches with ID, date, referee and streamer
+    // Create a clean list of matches with ID, date, staff
     if (matches.length === 0) {
         embed.addFields({ name: "No Matches Found", value: "No matches match the current filter criteria." });
     } else {
         let matchListContent = "";
         pageMatches.forEach(match => {
-            // Format referee and streamer info
+            // Format staff info
             const refereeInfo = match.referee ? `Referee: <@${match.referee}>` : "Referee: None";
             const streamerInfo = match.streamer ? `Streamer: <@${match.streamer}>` : "Streamer: None";
+            const commInfo = match.comm1 ? `Commentator: <@${match.comm1}> <@${match.comm2}>` : "Commentator: None";
 
             matchListContent += `ID: \`${match.matchId}\` - <t:${match.matchTimeUnix}:f>\n`;
-            matchListContent += `${refereeInfo} • ${streamerInfo}\n\n`;
+            matchListContent += `Match-up: \`${match.teamA}\` vs \`${match.teamB}\`\n`;
+            matchListContent += `${refereeInfo} • ${streamerInfo}\n${commInfo}\n\n`;
         });
 
         // Add the list as a single field
@@ -165,6 +191,11 @@ module.exports = {
             subcommand
                 .setName("list")
                 .setDescription("List all upcoming matches")
+                .addIntegerOption(option =>
+                    option.setName("page")
+                        .setDescription("Page number to display")
+                        .setRequired(false)
+                )
                 .addStringOption(option =>
                     option.setName("referee")
                         .setDescription("Filter by referee ID or 'none' for unassigned")
@@ -175,9 +206,14 @@ module.exports = {
                         .setDescription("Filter by streamer ID or 'none' for unassigned")
                         .setRequired(false)
                 )
-                .addIntegerOption(option =>
-                    option.setName("page")
-                        .setDescription("Page number to display")
+                .addStringOption(option =>
+                    option.setName("commentator_1")
+                        .setDescription("Filter by commentator 1 ID or 'none' for no commentator")
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName("commentator_2")
+                        .setDescription("Filter by commentator 2 ID or 'none' for no commentator")
                         .setRequired(false)
                 )
         ),
@@ -189,12 +225,16 @@ module.exports = {
             // Get filter options
             const refereeFilter = interaction.options.getString("referee");
             const streamerFilter = interaction.options.getString("streamer");
+            const comm1Filter = interaction.options.getString("commentator_1");
+            const comm2Filter = interaction.options.getString("commentator_2");
             const requestedPage = interaction.options.getInteger("page") || 1;
 
             // Combine filters into an object
             const filters = {};
             if (refereeFilter) filters.referee = refereeFilter;
             if (streamerFilter) filters.streamer = streamerFilter;
+            if (comm1Filter) filters.comm1 = comm1Filter;
+            if (comm2Filter) filters.comm2 = comm2Filter;
 
             await interaction.deferReply();
 

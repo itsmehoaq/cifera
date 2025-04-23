@@ -1,6 +1,9 @@
 {
   "token": "",
-  "admins": [],
+  "admins": [
+    "",
+    ""
+  ],
   "clientId": "",
   "spreadsheetId": "",
   "whitelistRole": {
@@ -8,7 +11,8 @@
     "Streamer": "",
     "Commentator": ""
   },
+  "rescheduleAnnouncementChannel": "",
+  "matchPingChannel": "",
   "customMapperCategory": "",
-  "customMapperRole": "",
-  "timezone": 0
+  "customMapperRole": ""
 }

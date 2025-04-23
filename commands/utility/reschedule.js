@@ -18,7 +18,7 @@ const refereeColumn = sheetsConfig.refereeColumn;
 const streamerColumn = sheetsConfig.streamerColumn;
 const comm1Column = sheetsConfig.comm1Column;
 const comm2Column = sheetsConfig.comm2Column;
-const rescheduleAnnouncementChannel = sheetsConfig.rescheduleAnnouncementChannel;
+const rescheduleAnnouncementChannel = config.rescheduleAnnouncementChannel;
 const {getSpreadsheetData, updateSpreadsheetData} = require("../../modules/spreadsheetFunctions.js");
 const {columnToIndex} = require("../../modules/columnToIndex.js");
 
