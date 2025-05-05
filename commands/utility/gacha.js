@@ -8,7 +8,10 @@ const gachaRCol = sheetsConfig.gachaRCol
 const gachaSRCol = sheetsConfig.gachaSRCol
 const gachaSSRCol = sheetsConfig.gachaSSRCol
 const gachaTrapCardCol = sheetsConfig.gachaTrapCardCol
-const lastRolledCards = new Map();
+const gachaExtra1Col = sheetsConfig.gachaExtra1Col;
+const gachaExtra2Col = sheetsConfig.gachaExtra2Col;
+const gachaCurrentBracketCol = sheetsConfig.gachaCurrentBracketCol;
+let lastRolledCardsGlobal = [];
 let ampData = require("../../ampData.json");
 module.exports = {
   data: new SlashCommandBuilder()
@@ -58,24 +61,21 @@ module.exports = {
       try {
         const sheetData = await getSpreadsheetData(gachaSheetName);
         if (!sheetData || sheetData.length <= 1) {
-          return {rowNumber: -1, hasRolled: false};
+          return {rowNumber: -1, hasRolled: false, row: null};
         }
-
         for (let i = 1; i < sheetData.length; i++) {
           const row = sheetData[i];
           const discordIdColIndex = columnToIndex(gachaDiscordId);
           const rResultColIndex = columnToIndex(gachaRCol);
-
           if (row && row[discordIdColIndex] === userId) {
             const hasRolled = row.length > rResultColIndex && row[rResultColIndex] && row[rResultColIndex].trim() !== "";
-            return {rowNumber: i + 1, hasRolled: hasRolled};
+            return {rowNumber: i + 1, hasRolled: hasRolled, row};
           }
         }
-
-        return {rowNumber: -1, hasRolled: false};
+        return {rowNumber: -1, hasRolled: false, row: null};
       } catch (error) {
         console.error("Error finding user in spreadsheet:", error);
-        return {rowNumber: -1, hasRolled: false};
+        return {rowNumber: -1, hasRolled: false, row: null};
       }
     }
 
@@ -129,7 +129,7 @@ module.exports = {
 
     function pickRandomCard(cardPool, urRate = 0.03) {
       if (!cardPool || cardPool.length === 0) {
-        return { card: null, remainingPool: [], newUrRate: urRate };
+        return {card: null, remainingPool: [], newUrRate: urRate};
       }
       let selectedCard = null;
       let pickedUR = false;
@@ -171,108 +171,157 @@ module.exports = {
     const userId = interaction.user.id;
     const userInfo = await findUserRowInSheet(userId);
     if (userInfo.rowNumber > 0) {
-      if (userInfo.hasRolled) {
-        const alreadyRolledEmbed = new EmbedBuilder()
-            .setTitle("Bạn đã roll rồi!")
-            .setDescription(`Kết quả roll đã được định đoạt. Chúc team bạn may mắn trong trận tiếp theo!`)
+      const row = userInfo.row;
+      const ssrColIndex = columnToIndex(gachaSSRCol);
+      const extra1ColIndex = columnToIndex(gachaExtra1Col);
+      const extra2ColIndex = columnToIndex(gachaExtra2Col);
+      const ssrCardName = row[ssrColIndex]?.trim();
+      const extra1 = row[extra1ColIndex]?.trim();
+      const extra2 = row[extra2ColIndex]?.trim();
+        if (userInfo.hasRolled) {
+          if (ssrCardName === "Pot of Greed") {
+            if (!extra1 || !extra2) {
+              const eligibleCards = ampData.filter(card => card.rarity !== "UR" && card.category !== "Trap Card");
+              const shuffled = shuffleArray(eligibleCards);
+              const extraCards = [shuffled[0], shuffled[1]];
+              await updateSpreadsheetData(`'${gachaSheetName}'!${gachaExtra1Col}${userInfo.rowNumber}`, [[extraCards[0].name]]);
+              await updateSpreadsheetData(`'${gachaSheetName}'!${gachaExtra2Col}${userInfo.rowNumber}`, [[extraCards[1].name]]);
+              const allCards = [
+                row[columnToIndex(gachaRCol)],
+                row[columnToIndex(gachaSRCol)],
+                row[columnToIndex(gachaSSRCol)],
+                row[columnToIndex(gachaTrapCardCol)],
+                extraCards[0].name,
+                extraCards[1].name
+              ].map(name => ampData.find(card => card.name === name)).filter(Boolean);
+
+              const embeds = allCards.map(card => createCardEmbed(card));
+              await interaction.editReply({
+                content: "Bạn đã roll rồi! (Pot of Greed effect: 2 extra cards drawn)",
+                embeds
+              });
+              return;
+            } else {
+              const allCards = [
+                row[columnToIndex(gachaRCol)],
+                row[columnToIndex(gachaSRCol)],
+                row[columnToIndex(gachaSSRCol)],
+                row[columnToIndex(gachaTrapCardCol)],
+                extra1,
+                extra2
+              ].map(name => ampData.find(card => card.name === name)).filter(Boolean);
+
+              const embeds = allCards.map(card => createCardEmbed(card));
+              await interaction.editReply({
+                content: "Bạn đã roll rồi! (Pot of Greed effect: 2 extra cards drawn)",
+                embeds
+              });
+              return;
+            }
+          } else {
+            const alreadyRolledEmbed = new EmbedBuilder()
+                .setTitle("Bạn đã roll rồi!")
+                .setDescription(`Kết quả roll đã được định đoạt. Chúc team bạn may mắn trong trận tiếp theo!`)
+                .setColor(0xFF9900)
+            await interaction.editReply({
+              content: null, embeds: [alreadyRolledEmbed]
+            });
+            return;
+          }
+        }
+        try {
+          let selectedCards = [];
+          const previousCards = lastRolledCardsGlobal;
+          let mainCardPool = ampData.filter(card =>
+              card.category !== "Trap Card" &&
+              !previousCards.some(prevCard => prevCard.id === card.id)
+          );
+          const shuffledTrapCards = shuffleArray(
+              ampData.filter(card =>
+                  card.category === "Trap Card" &&
+                  !previousCards.some(prevCard => prevCard.id === card.id)
+              )
+          );
+          const lColIndex = columnToIndex(gachaCurrentBracketCol);
+          const lValue = row[lColIndex]?.trim();
+          let urRate = (lValue === "L") ? 0.5 : 0.03;
+          for (let i = 0; i < 3; i++) {
+            const result = pickRandomCard(mainCardPool, urRate);
+            if (result.card) {
+              selectedCards.push(result.card);
+              mainCardPool = result.remainingPool;
+              urRate = result.newUrRate;
+            }
+          }
+
+          const rarities = selectedCards.map(card => card.rarity);
+
+          if (!rarities.includes("R")) {
+            const rCards = ampData.filter(card => card.rarity === "R");
+            if (rCards.length > 0) {
+              const randomIndex = Math.floor(Math.random() * rCards.length);
+              selectedCards.push(rCards[randomIndex]);
+            }
+          }
+
+          if (!rarities.includes("SR")) {
+            const srCards = ampData.filter(card => card.rarity === "SR");
+            if (srCards.length > 0) {
+              const randomIndex = Math.floor(Math.random() * srCards.length);
+              selectedCards.push(srCards[randomIndex]);
+            }
+          }
+
+          if (!rarities.includes("SSR") && !rarities.includes("UR")) {
+            const ssrCards = ampData.filter(card => card.rarity === "SSR");
+            if (ssrCards.length > 0) {
+              const randomIndex = Math.floor(Math.random() * ssrCards.length);
+              selectedCards.push(ssrCards[randomIndex]);
+            }
+          }
+
+          if (shuffledTrapCards.length > 0) {
+            selectedCards.push(shuffledTrapCards[0]);
+          }
+
+          selectedCards = selectedCards.slice(0, 4);
+
+          let sheetUpdateMessage = "";
+          const updateSuccess = await updateGachaResults(userInfo.rowNumber, selectedCards);
+          if (updateSuccess) {
+            sheetUpdateMessage = "✅ Saved!";
+            lastRolledCardsGlobal = selectedCards;
+          } else {
+            sheetUpdateMessage = "❌ goi goi co loi xay ra chung toi da ping <@246619988050444288> de vao cuoc dieu tra.";
+          }
+          selectedCards.sort((a, b) => {
+            if (a.category === "Trap Card") return 1;
+            if (b.category === "Trap Card") return -1;
+
+            const rarityOrder = {"R": 1, "SR": 2, "SSR": 3, "UR": 4};
+            return rarityOrder[a.rarity] - rarityOrder[b.rarity];
+          });
+
+          const embeds = selectedCards.map(card => createCardEmbed(card));
+
+          await interaction.editReply({
+            content: `${sheetUpdateMessage}\n\n<@${userId}> đã gacha ra các thẻ sau:`, embeds: embeds
+          });
+
+        } catch (error) {
+          console.error("Error:", error);
+          await interaction.editReply({
+            content: "something happened pls ping hieutrollmc.", ephemeral: true
+          });
+        }
+      } else {
+        const accessDenied403 = new EmbedBuilder()
+            .setTitle("❌ nuh uh")
+            .setDescription(`Chỉ có Captain thuộc 16 team trong Bracket mới được sử dụng lệnh này!`)
             .setColor(0xFF9900)
         await interaction.editReply({
-          content: null, embeds: [alreadyRolledEmbed]
-        });
-        return;
-      }
-      try {
-        let selectedCards = [];
-        const trapCards = ampData.filter(card => card.category === "Trap Card");
-        const previousCards = lastRolledCards.get(userId) || [];
-        let mainCardPool = ampData.filter(card => {
-          return card.category !== "Trap Card" &&
-              !previousCards.some(prevCard => prevCard.id === card.id);
-        });
-        for (let i = 0; i < 727; i++) {
-          mainCardPool = shuffleArray(mainCardPool);
-        }
-        const shuffledTrapCards = shuffleArray(
-            trapCards.filter(card => !previousCards.some(prevCard => prevCard.id === card.id))
-        );
-        let urRate = 0.03;
-        for (let i = 0; i < 3; i++) {
-          const result = pickRandomCard(mainCardPool, urRate);
-          if (result.card) {
-            selectedCards.push(result.card);
-            mainCardPool = result.remainingPool;
-            urRate = result.newUrRate;
-          }
-        }
-
-        const rarities = selectedCards.map(card => card.rarity);
-
-        if (!rarities.includes("R")) {
-          const rCards = ampData.filter(card => card.rarity === "R");
-          if (rCards.length > 0) {
-            const randomIndex = Math.floor(Math.random() * rCards.length);
-            selectedCards.push(rCards[randomIndex]);
-          }
-        }
-
-        if (!rarities.includes("SR")) {
-          const srCards = ampData.filter(card => card.rarity === "SR");
-          if (srCards.length > 0) {
-            const randomIndex = Math.floor(Math.random() * srCards.length);
-            selectedCards.push(srCards[randomIndex]);
-          }
-        }
-
-        if (!rarities.includes("SSR") && !rarities.includes("UR")) {
-          const ssrCards = ampData.filter(card => card.rarity === "SSR");
-          if (ssrCards.length > 0) {
-            const randomIndex = Math.floor(Math.random() * ssrCards.length);
-            selectedCards.push(ssrCards[randomIndex]);
-          }
-        }
-
-        if (shuffledTrapCards.length > 0) {
-          selectedCards.push(shuffledTrapCards[0]);
-        }
-
-        selectedCards = selectedCards.slice(0, 4);
-
-        let sheetUpdateMessage = "";
-        const updateSuccess = await updateGachaResults(userInfo.rowNumber, selectedCards);
-        if (updateSuccess) {
-          sheetUpdateMessage = "✅ Saved!";
-          lastRolledCards.set(userId, selectedCards);
-        } else {
-          sheetUpdateMessage = "❌ goi goi co loi xay ra chung toi da ping <@246619988050444288> de vao cuoc dieu tra.";
-        }
-        selectedCards.sort((a, b) => {
-          if (a.category === "Trap Card") return 1;
-          if (b.category === "Trap Card") return -1;
-
-          const rarityOrder = {"R": 1, "SR": 2, "SSR": 3, "UR": 4};
-          return rarityOrder[a.rarity] - rarityOrder[b.rarity];
-        });
-
-        const embeds = selectedCards.map(card => createCardEmbed(card));
-
-        await interaction.editReply({
-          content: `${sheetUpdateMessage}\n\n<@${userId}> đã gacha ra các thẻ sau:`, embeds: embeds
-        });
-
-      } catch (error) {
-        console.error("Error in gacha command:", error);
-        await interaction.editReply({
-          content: "An error occurred while processing your gacha roll.", ephemeral: true
+          content: null, embeds: [accessDenied403], ephemeral: true,
         });
       }
-    } else {
-      const accessDenied403 = new EmbedBuilder()
-          .setTitle("❌ nuh uh")
-          .setDescription(`Chỉ có Captain thuộc 16 team trong Bracket mới được sử dụng lệnh này!`)
-          .setColor(0xFF9900)
-      await interaction.editReply({
-        content: null, embeds: [accessDenied403], ephemeral: true,
-      });
     }
-  }
 }
