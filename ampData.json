@@ -113,7 +113,7 @@
     "category": "Score",
     "id": "a11",
     "r_id": 4,
-    "rarity": "UR",
+    "rarity": "R",
     "name": "[X]",
     "icon": "",
     "desc": "!roll 50 ra multiplier (ví dụ roll 50 -> mult = 50/100 = 0.5). lấy score thấp nhất trong team * mult và cộng vào team score",
@@ -158,9 +158,9 @@
     "id": "b3",
     "r_id": 1,
     "rarity": "R",
-    "name": "300 is not the limit",
+    "name": "Hiding In The Dark",
     "icon": "",
-    "desc": "Đổi điều kiện thắng sang avg. UR",
+    "desc": "Bỏ multiplier x0.85 của HD trên map dùng amp (HD về lại mult mặc định)",
     "condition": "",
     "idea": "heart rate line (done)"
   },
@@ -254,17 +254,6 @@
   },
   {
     "category": "Modifier",
-    "id": "c1",
-    "r_id": 1,
-    "rarity": "R",
-    "name": "Quiet Batman",
-    "icon": "",
-    "desc": "Đổi mod sang FL, thắng bằng số lượng miss thấp nhất",
-    "condition": "",
-    "idea": "batman (done)"
-  },
-  {
-    "category": "Modifier",
     "id": "c2",
     "r_id": 1,
     "rarity": "R",
@@ -276,36 +265,14 @@
   },
   {
     "category": "Modifier",
-    "id": "c3",
-    "r_id": 2,
-    "rarity": "SR",
-    "name": "Abyssal",
+    "id": "c1",
+    "r_id": 1,
+    "rarity": "R",
+    "name": "Quiet Batman",
     "icon": "",
-    "desc": "Xáo trộn map giữa 2 category mod do bạn chọn\\n(Ví dụ: đổi map HD thành map HR, và map HR thành map HD).\\nCó hiệu lực đến hết trận đấu",
-    "condition": "không áp dụng cho DT",
-    "idea": "hurricane"
-  },
-  {
-    "category": "Modifier",
-    "id": "c4",
-    "r_id": 2,
-    "rarity": "SR",
-    "name": "Jack Of Mods",
-    "icon": "",
-    "desc": "Đổi mod hiện tại thành 1 mod khác có trong pool hiện tại",
-    "condition": "giới hạn trong các mod có trong pool",
-    "idea": "5 cards place around each other (done)"
-  },
-  {
-    "category": "Modifier",
-    "id": "c5",
-    "r_id": 3,
-    "rarity": "SSR",
-    "name": "Swapperino",
-    "icon": "",
-    "desc": "Chuyển Score v2 thành Score v1",
+    "desc": "Đổi mod sang FL, thắng bằng số lượng miss thấp nhất",
     "condition": "",
-    "idea": "swap box (done)"
+    "idea": "batman (done)"
   },
   {
     "category": "Modifier",
@@ -319,10 +286,21 @@
     "idea": "thorn heart (done)"
   },
   {
+    "category": "Modifier",
+    "id": "c5",
+    "r_id": 3,
+    "rarity": "SSR",
+    "name": "Swapperino",
+    "icon": "",
+    "desc": "Chuyển Score v2 thành Score v1",
+    "condition": "",
+    "idea": "swap box (done)"
+  },
+  {
     "category": "Misc",
     "id": "d1",
-    "r_id": 1,
-    "rarity": "R",
+    "r_id": 3,
+    "rarity": "SSR",
     "name": "Believe The Rainbow",
     "icon": "",
     "desc": "!roll. Nếu <=70 thì không có gì xảy ra, nhưng nếu >70 thì lập tức +1 điểm trận đấu và nhường lượt pick tiếp theo cho đối thủ.",
@@ -365,8 +343,8 @@
   {
     "category": "Misc",
     "id": "d5",
-    "r_id": 3,
-    "rarity": "SSR",
+    "r_id": 1,
+    "rarity": "R",
     "name": "Wheel of Fortune",
     "icon": "",
     "desc": "random.org để xáo trộn điểm các người chơi. Đội bạn được x1.05 điểm sau khi random.",
