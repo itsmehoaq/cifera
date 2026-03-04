@@ -10,5 +10,11 @@
   "comm2Column": "",
   "sheetName": "",
   "matchIdColumn": "",
-  "matchPingCheckColumn": ""
+  "matchPingCheckColumn": "",
+  "bracketTimeColumn": "",
+  "qualifiersSheetName": "",
+  "qualifiersCaptainDiscordStartingColumn": "",
+  "qualifiersLobbyIdColumn": "",
+  "qualifiersDateColumn": "",
+  "qualifiersTimeColumn": ""
 }

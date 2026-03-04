@@ -18,18 +18,14 @@ const {columnToIndex} = require("../../modules/columnToIndex.js");
 
 async function getUpcomingMatches(filters = {}) {
     try {
-        // Get current time
         const now = new Date();
         const currentUnixTime = Math.floor(now.getTime() / 1000);
 
-        // Get spreadsheet data
         const rows = await getSpreadsheetData(matchSheet);
 
-        // Filter and format upcoming matches
         let upcomingMatches = rows
             .filter(row => {
                 const matchTimeUnix = row[columnToIndex(dateColumn)];
-                // Skip if no date is set or date is in the past
                 return matchTimeUnix && parseInt(matchTimeUnix) > currentUnixTime;
             })
             .map(row => {
@@ -45,7 +41,6 @@ async function getUpcomingMatches(filters = {}) {
                 };
             });
 
-        // Apply referee filter if provided
         if (filters.referee) {
             upcomingMatches = upcomingMatches.filter(match => {
                 if (filters.referee.toLowerCase() === 'none') {
@@ -56,7 +51,6 @@ async function getUpcomingMatches(filters = {}) {
             });
         }
 
-        // Apply streamer filter if provided
         if (filters.streamer) {
             upcomingMatches = upcomingMatches.filter(match => {
                 if (filters.streamer.toLowerCase() === 'none') {
@@ -67,7 +61,6 @@ async function getUpcomingMatches(filters = {}) {
             });
         }
 
-        // Apply comm1 filter if provided
         if (filters.comm1) {
             upcomingMatches = upcomingMatches.filter(match => {
                 if (filters.comm1.toLowerCase() === 'none') {
@@ -78,7 +71,6 @@ async function getUpcomingMatches(filters = {}) {
             });
         }
 
-        // Apply comm2 filter if provided
         if (filters.comm2) {
             upcomingMatches = upcomingMatches.filter(match => {
                 if (filters.comm1.toLowerCase() === 'none') {
@@ -89,7 +81,6 @@ async function getUpcomingMatches(filters = {}) {
             });
         }
 
-        // Sort matches by date (earliest first)
         upcomingMatches.sort((a, b) => a.matchTimeUnix - b.matchTimeUnix);
 
         return upcomingMatches;
@@ -100,23 +91,18 @@ async function getUpcomingMatches(filters = {}) {
 }
 
 function createMatchListEmbed(matches, page = 1, filters = {}) {
-    // Define how many matches per page
     const matchesPerPage = 4;
     const totalPages = Math.ceil(matches.length / matchesPerPage);
 
-    // Ensure page is within valid range
     page = Math.max(1, Math.min(page, totalPages || 1));
 
-    // Get matches for the current page
     const startIndex = (page - 1) * matchesPerPage;
     const endIndex = Math.min(startIndex + matchesPerPage, matches.length);
     const pageMatches = matches.slice(startIndex, endIndex);
 
-    // Create basic title and description
     let title = "Upcoming Matches";
     let description = `Showing matches ${startIndex + 1}-${endIndex} of ${matches.length}`;
 
-    // Create embed
     const embed = new EmbedBuilder()
         .setColor("#00AAFF")
         .setTitle(title)
@@ -124,11 +110,9 @@ function createMatchListEmbed(matches, page = 1, filters = {}) {
         .setTimestamp()
         .setFooter({text: `Page ${page}/${totalPages || 1}`});
 
-    // Add filter information as fields instead of in the title
     if (filters.referee || filters.streamer) {
         let filterInfo = [];
 
-        // Add referee filter info
         if (filters.referee) {
             if (filters.referee.toLowerCase() === 'none') {
                 filterInfo.push("Showing matches needing referees");
@@ -137,7 +121,6 @@ function createMatchListEmbed(matches, page = 1, filters = {}) {
             }
         }
 
-        // Add streamer filter info
         if (filters.streamer) {
             if (filters.streamer.toLowerCase() === 'none') {
                 filterInfo.push("Showing matches needing streamers");
@@ -145,24 +128,20 @@ function createMatchListEmbed(matches, page = 1, filters = {}) {
                 filterInfo.push(`Streamer: <@${filters.streamer}>`);
             }
         }
-        // Add comm1 filter info
         if (filters.comm1 || filters.comm2) {
             if (filters.comm1.toLowerCase() === 'none' || filters.comm2.toLowerCase() === 'none') {
                 filterInfo.push("Showing matches needing commentators");
             }
         }
 
-        // Add filter info as a field
         embed.addFields({ name: "Applied Filters", value: filterInfo.join('\n') });
     }
 
-    // Create a clean list of matches with ID, date, staff
     if (matches.length === 0) {
         embed.addFields({ name: "No Matches Found", value: "No matches match the current filter criteria." });
     } else {
         let matchListContent = "";
         pageMatches.forEach(match => {
-            // Format staff info
             const refereeInfo = match.referee ? `Referee: <@${match.referee}>` : "Referee: None";
             const streamerInfo = match.streamer ? `Streamer: <@${match.streamer}>` : "Streamer: None";
             const commInfo = match.comm1 ? `Commentator: <@${match.comm1}> <@${match.comm2}>` : "Commentator: None";
@@ -172,7 +151,6 @@ function createMatchListEmbed(matches, page = 1, filters = {}) {
             matchListContent += `${refereeInfo} • ${streamerInfo}\n${commInfo}\n\n`;
         });
 
-        // Add the list as a single field
         embed.addFields({ name: "Scheduled Matches", value: matchListContent });
     }
 
@@ -222,14 +200,12 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
 
         if (subcommand === "list") {
-            // Get filter options
             const refereeFilter = interaction.options.getString("referee");
             const streamerFilter = interaction.options.getString("streamer");
             const comm1Filter = interaction.options.getString("commentator_1");
             const comm2Filter = interaction.options.getString("commentator_2");
             const requestedPage = interaction.options.getInteger("page") || 1;
 
-            // Combine filters into an object
             const filters = {};
             if (refereeFilter) filters.referee = refereeFilter;
             if (streamerFilter) filters.streamer = streamerFilter;
@@ -239,16 +215,13 @@ module.exports = {
             await interaction.deferReply();
 
             try {
-                // Get upcoming matches with optional filters
                 const upcomingMatches = await getUpcomingMatches(filters);
 
-                // Create embed for the requested page
                 const { embed, currentPage, totalPages } = createMatchListEmbed(upcomingMatches, requestedPage, filters);
 
-                // Send the response
                 await interaction.editReply({
                     embeds: [embed],
-                    components: [] // You could add pagination buttons here if desired
+                    components: []
                 });
 
             } catch (error) {

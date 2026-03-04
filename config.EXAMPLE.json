@@ -14,5 +14,8 @@
   "rescheduleAnnouncementChannel": "",
   "matchPingChannel": "",
   "customMapperCategory": "",
-  "customMapperRole": ""
+  "customMapperRole": "",
+  "captainRole": "",
+  "qualifiersLobbySize": "",
+  "timezone": 0
 }

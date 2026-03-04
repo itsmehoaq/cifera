@@ -1,18 +1,19 @@
-const {google} = require('googleapis');
 const {
     SlashCommandBuilder,
 } = require('discord.js')
-const sheets = require('../../auth.js');
 const config = require('../../config.json');
 const sheetsConfig = require('../../sheets-config.json');
 const qualifiersSheet = sheetsConfig.qualifiersSheetName;
 const {getSpreadsheetData, updateSpreadsheetData} = require('../../modules/spreadsheetFunctions.js');
 const {columnToIndex} = require('../../modules/columnToIndex.js');
 const {indexToColumn} = require('../../modules/indexToColumn.js');
+const {parseAndAdjust} = require('../../modules/dateTimeHelpers.js');
 const qualifiersCaptainDiscordStartingColumn = sheetsConfig.qualifiersCaptainDiscordStartingColumn;
 const qualifiersLobbySize = config.qualifiersLobbySize;
 const captainRole = config.captainRole;
 const qualifiersLobbyIdColumn = sheetsConfig.qualifiersLobbyIdColumn;
+const qualifiersDateColumn = sheetsConfig.qualifiersDateColumn;
+const qualifiersTimeColumn = sheetsConfig.qualifiersTimeColumn;
 
 function checkValidUser(interaction) {
     return interaction.member.roles.cache.has(captainRole);
@@ -47,7 +48,7 @@ async function checkIfAlreadyInAnotherLobby(interaction, rows, userId) {
     return false;
 }
 
-async function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex) {
+async function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex, parsed = null) {
     let lobbyFound = false;
     let columnFound = '';
     if (checkIfAlreadyInLobby(lobbyRow, interaction.user.id)) {
@@ -69,28 +70,31 @@ async function handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex) 
             content: `:x: Lobby is full.`,
             ephemeral: true,
         });
-    } else {
-        let replyContent = ``;
-        if (await checkIfAlreadyInAnotherLobby(interaction, rows, interaction.user.id)) {
-            replyContent = `:warning: You have been removed from your previous lobby.\n`;
-        }
+    }
+
+    let replyContent = ``;
+    if (await checkIfAlreadyInAnotherLobby(interaction, rows, interaction.user.id)) {
+        replyContent = `:warning: You have been removed from your previous lobby.\n`;
+    }
+
+    try {
         const range = `'${qualifiersSheet}'!${columnFound}${lobbyRowIndex}:${columnFound}${lobbyRowIndex}`;
-        const value = [[interaction.user.id]];
-        updateSpreadsheetData(range, value)
-            .then(() => {
-                replyContent += `:white_check_mark: You have joined the lobby **${interaction.options.getString('lobbyid').toUpperCase()}**.`;
-                interaction.editReply({
-                    content: replyContent,
-                    ephemeral: true,
-                });
-            })
-            .catch((error) => {
-                console.error(error);
-                interaction.editReply({
-                    content: `${replyContent}:x: An error occurred while updating the spreadsheet.`,
-                    ephemeral: true,
-                });
-            });
+        await updateSpreadsheetData(range, [[interaction.user.id]]);
+
+        if (parsed && qualifiersDateColumn && qualifiersTimeColumn) {
+            const dateRange = `'${qualifiersSheet}'!${qualifiersDateColumn}${lobbyRowIndex}:${qualifiersTimeColumn}${lobbyRowIndex}`;
+            await updateSpreadsheetData(dateRange, [[parsed.dateStr, parsed.timeStr]]);
+            replyContent += `:white_check_mark: You have joined the lobby **${interaction.options.getString('lobbyid').toUpperCase()}** scheduled at <t:${Math.floor(parsed.unixTime)}:f>.`;
+        } else {
+            replyContent += `:white_check_mark: You have joined the lobby **${interaction.options.getString('lobbyid').toUpperCase()}**.`;
+        }
+        interaction.editReply({ content: replyContent, ephemeral: true });
+    } catch (error) {
+        console.error(error);
+        interaction.editReply({
+            content: `${replyContent}:x: An error occurred while updating the spreadsheet.`,
+            ephemeral: true,
+        });
     }
 }
 
@@ -145,6 +149,18 @@ module.exports = {
                         .setDescription('Lobby ID')
                         .setRequired(true)
                 )
+                .addStringOption(option =>
+                    option
+                        .setName('date')
+                        .setDescription('Lobby date (DD/MM/YYYY) — optional')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option
+                        .setName('time')
+                        .setDescription('Lobby time (HH:MM) — optional')
+                        .setRequired(false)
+                )
         )
         .addSubcommand(subcommand =>
             subcommand
@@ -176,7 +192,27 @@ module.exports = {
         }
         const lobbyRowIndex = rows.indexOf(lobbyRow) + 1;
         if (interaction.options.getSubcommand() === 'join') {
-            await handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex);
+            const dateInput = interaction.options.getString('date');
+            const timeInput = interaction.options.getString('time');
+            let parsed = null;
+
+            if (dateInput || timeInput) {
+                if (!dateInput || !timeInput) {
+                    return interaction.editReply({
+                        content: ':x: Please provide **both** a date and a time.',
+                        ephemeral: true,
+                    });
+                }
+                parsed = parseAndAdjust(dateInput, timeInput, config.timezone);
+                if (!parsed) {
+                    return interaction.editReply({
+                        content: ':x: Invalid date or time. Use DD/MM/YYYY and HH:MM, and ensure the date is in the future.',
+                        ephemeral: true,
+                    });
+                }
+            }
+
+            await handleQualifiersJoin(rows, interaction, lobbyRow, lobbyRowIndex, parsed);
         } else {
             handleQualifiersLeave(interaction, lobbyRow, lobbyRowIndex);
         }

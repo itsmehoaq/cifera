@@ -20,16 +20,12 @@ const {columnToIndex} = require("../../modules/columnToIndex.js");
 const matchPingChannel = config.matchPingChannel;
 const matchPingCheck = sheetsConfig.matchPingCheckColumn;
 
-// Array of media links for match pings (mix of GIFs and videos)
 const matchMedia = [
-    // GIFs
     "https://files.catbox.moe/ny528c.gif",
     "https://files.catbox.moe/gprbs4.gif",
     "https://files.catbox.moe/hkdni3.gif",
     "https://files.catbox.moe/ttxqt6.gif",
     "https://files.catbox.moe/vv6pcs.gif",
-
-    // mp4
     "https://files.catbox.moe/s7erg6.mp4",
     "https://files.catbox.moe/g1d4ns.mp4",
     "https://files.catbox.moe/7pu966.mp4",
@@ -41,54 +37,33 @@ const matchMedia = [
     "https://files.catbox.moe/jc1h42.mp4"
 ];
 
-/**
- * Get a random media link from the matchMedia array
- * @returns {string} A random media URL
- */
 function getRandomMedia() {
     const randomIndex = Math.floor(Math.random() * matchMedia.length);
     return matchMedia[randomIndex];
 }
 
-/**
- * Check if the URL is a video file
- * @param {string} url - The URL to check
- * @returns {boolean} True if it's a video file
- */
 function isVideoUrl(url) {
     return url.endsWith('.mp4') || url.endsWith('.mov') || url.endsWith('.webm');
 }
 
-/**
- * Function to handle match pings
- * Pings captains and staff before the match time.
- * @param {Object} client - Discord.js client instance
- */
 function match_ping(client) {
-    // Get current time
     const now = new Date();
 
-    // Get spreadsheet data
     return getSpreadsheetData(matchSheet).then(rows => {
         const matchesPinged = [];
         const updatePromises = []
         rows.forEach((row, rowIndex) => {
-            // Get match time from the sheet (converting Unix timestamp to Date)
             const matchTimeUnix = row[columnToIndex(dateColumn)];
-            if (!matchTimeUnix) return; // Skip if no date is set
+            if (!matchTimeUnix) return;
 
-            // Check if match has already been pinged
             const alreadyPinged = row[columnToIndex(matchPingCheck)] === "TRUE";
-            if (alreadyPinged) return; // Skip if already pinged
+            if (alreadyPinged) return;
 
             const matchTime = new Date(matchTimeUnix * 1000);
 
-            // Calculate time difference in minutes
             const timeDifference = (matchTime - now) / (60 * 1000);
 
-            // Check if it's 15 minutes or less before the match
             if (timeDifference <= 15 && timeDifference > 0) {
-                // Get all relevant IDs
                 const captainA = row[columnToIndex(captainAColumn)];
                 const captainB = row[columnToIndex(captainBColumn)];
                 const matchId = row[columnToIndex(matchIdColumn)];
@@ -97,13 +72,9 @@ function match_ping(client) {
                 const comm1 = row[columnToIndex(comm1Column)];
                 const comm2 = row[columnToIndex(comm2Column)];
 
-                // Create ping message
                 let content = `## Match Reminder\n`;
-
-                // Mention captains
                 content += `**Captains**: <@${captainA}> <@${captainB}>\n`;
 
-                // Add staff mentions if available
                 if (referee) {
                     content += `\n**Referee**: <@${referee}>`;
                 }
@@ -117,10 +88,8 @@ function match_ping(client) {
                     content += ` <@${comm2}>`;
                 }
 
-                // Get a random media link
                 const mediaLink = getRandomMedia();
 
-                // Create embed
                 const embed = new EmbedBuilder()
                     .setColor("#0099ff")
                     .setTitle(`Match ID: ${matchId}`)
@@ -132,32 +101,23 @@ function match_ping(client) {
                     .setTimestamp()
                     .setFooter({text: `Match starting in ${Math.round(timeDifference)} minutes.`});
 
-                // For GIFs, use the embed's setImage
                 if (!isVideoUrl(mediaLink)) {
                     embed.setImage(mediaLink);
                 }
 
-                // Send ping to the designated channel
                 sendMatchPingWithMedia(client, content, embed, mediaLink, matchId);
 
-                // Add to list of pinged matches
                 matchesPinged.push(matchId);
 
-                // Update the spreadsheet to mark this match as pinged
-                // The row index in the sheet is rowIndex + 2 (accounting for header row and 0-indexing)
                 const rowNumber = rowIndex + 1;
-
-                // Create the range and values in the format expected by the API
                 const range = `${matchSheet}!${matchPingCheck}${rowNumber}:${matchPingCheck}${rowNumber}`;
-                const values = [["TRUE"]]; // Values as a 2D array
+                const values = [["TRUE"]];
 
-                // Call updateSpreadsheetData with the correct format
                 const updatePromise = updateSpreadsheetData(range, values);
                 updatePromises.push(updatePromise);
             }
         });
 
-        // Wait for all updates to complete
         return Promise.all(updatePromises).then(() => {
             return matchesPinged;
         });
@@ -167,11 +127,6 @@ function match_ping(client) {
     });
 }
 
-/**
- * Function to send a ping for a specific match by ID
- * @param {Object} client - Discord.js client instance
- * @param {string} matchId - ID of the match to ping
- */
 async function force_match_ping(client, matchId) {
     try {
         const rows = await getSpreadsheetData(matchSheet);
@@ -183,9 +138,8 @@ async function force_match_ping(client, matchId) {
 
             if (currentMatchId === matchId) {
                 matchFound = true;
-                const rowIndex = i; // Store the row index for later use
+                const rowIndex = i;
 
-                // Get match details
                 const matchTimeUnix = row[columnToIndex(dateColumn)];
                 const captainA = row[columnToIndex(captainAColumn)];
                 const captainB = row[columnToIndex(captainBColumn)];
@@ -198,18 +152,13 @@ async function force_match_ping(client, matchId) {
                     throw new Error("Match has no scheduled time");
                 }
 
-                // Calculate time until match
                 const now = new Date();
                 const matchTime = new Date(matchTimeUnix * 1000);
                 const timeDifference = (matchTime - now) / (60 * 1000);
 
-                // Create ping message
                 let content = `## Match Reminder\n`;
-
-                // Mention captains
                 content += `**Captains**: <@${captainA}> <@${captainB}>\n`;
 
-                // Add staff mentions if available
                 if (referee) {
                     content += `\n**Referee**: <@${referee}>`;
                 }
@@ -223,10 +172,8 @@ async function force_match_ping(client, matchId) {
                     content += ` <@${comm2}>`;
                 }
 
-                // Get a random media link
                 const mediaLink = getRandomMedia();
 
-                // Create embed
                 const embed = new EmbedBuilder()
                     .setColor("#FF9900")
                     .setTitle(`Match ID: ${matchId}`)
@@ -242,28 +189,21 @@ async function force_match_ping(client, matchId) {
                             : "This match should have already started."
                     });
 
-                // For GIFs, use the embed's setImage
                 if (!isVideoUrl(mediaLink)) {
                     embed.setImage(mediaLink);
                 }
 
-                // Send ping to the designated channel
                 await sendMatchPingWithMedia(client, content, embed, mediaLink, matchId);
 
-                // Update the spreadsheet to mark this match as pinged
-                // The row index in the sheet is rowIndex + 2 (accounting for header row and 0-indexing)
                 const rowNumber = rowIndex + 2;
-
-                // Create the range and values in the format expected by the API
                 const range = `${matchSheet}!${matchPingCheck}${rowNumber}:${matchPingCheck}${rowNumber}`;
-                const values = [["TRUE"]]; // Values as a 2D array
+                const values = [["TRUE"]];
 
                 console.log("Updating spreadsheet with:", {
                     range: range,
                     values: values
                 });
 
-                // Call updateSpreadsheetData with the correct format
                 await updateSpreadsheetData(range, values);
 
                 return true;
@@ -280,16 +220,7 @@ async function force_match_ping(client, matchId) {
     }
 }
 
-/**
- * Function to send match ping with media handling
- * @param {Object} client - Discord.js client instance
- * @param {string} content - Message content
- * @param {Object} embed - Discord embed object
- * @param {string} mediaLink - Link to media file
- * @param {string} matchId - Match ID for reference
- */
 async function sendMatchPingWithMedia(client, content, embed, mediaLink, matchId) {
-    // Find the channel
     const channel = client.channels.cache.get(matchPingChannel);
 
     if (!channel) {
@@ -298,14 +229,11 @@ async function sendMatchPingWithMedia(client, content, embed, mediaLink, matchId
     }
 
     try {
-        // First, send the main message with embed
         await channel.send({
             content: content,
             embeds: [embed]
         });
 
-        // If it's a video, send it as a separate message with just the URL
-        // This ensures it embeds properly without showing in the main message
         if (isVideoUrl(mediaLink)) {
             await channel.send(mediaLink);
         }
@@ -314,7 +242,6 @@ async function sendMatchPingWithMedia(client, content, embed, mediaLink, matchId
     } catch (error) {
         console.error(`Error sending match ping: ${error}`);
 
-        // If there's an error, try sending just the content without the media
         try {
             await channel.send({
                 content: content + "\n*(Note: Media failed to load)*",
@@ -348,7 +275,6 @@ module.exports = {
         ),
 
     execute: async (interaction) => {
-        // Only allow admins to use this command
         if (!config.admins.includes(interaction.user.id)) {
             return interaction.reply({
                 content: "You don't have permission to use this command.",
@@ -364,7 +290,6 @@ module.exports = {
                 ephemeral: true
             });
 
-            // Pass the client instance from the interaction
             const matchesPinged = await match_ping(interaction.client);
 
             if (matchesPinged.length > 0) {
@@ -402,6 +327,5 @@ module.exports = {
         }
     },
 
-    // Export the match_ping function so it can be used in index.js for scheduling
     match_ping
 };

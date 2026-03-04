@@ -107,5 +107,3 @@ module.exports = {
         interaction.editReply({ content: ':white_check_mark: Command completed successfully.'})
     }
 }
-
-//will fuck up if these is a special character in the middle of the name
