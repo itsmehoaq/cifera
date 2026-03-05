@@ -98,7 +98,7 @@ async function handlePresetLobbyJoin(rows, interaction, lobbyRow, lobbyRowIndex)
         const lobbyId = lobbyRow[columnToIndex(qualifiersLobbyIdColumn)];
         const existingDateStr = lobbyRow[columnToIndex(qualifiersDateColumn)];
         const existingTimeStr = lobbyRow[columnToIndex(qualifiersTimeColumn)];
-        const existingUnix = parseSheetDateTimeToUnix(existingDateStr, existingTimeStr);
+        const existingUnix = parseSheetDateTimeToUnix(existingDateStr, existingTimeStr, config.timezone);
 
         if (existingUnix) {
             replyContent += `:white_check_mark: You have joined lobby **${lobbyId.toUpperCase()}** scheduled at <t:${Math.floor(existingUnix)}:f>.`;
@@ -124,19 +124,30 @@ async function handleCustomLobbyCreate(rows, interaction, parsed) {
     try {
         const newLobbyId = generateNextLobbyId(rows);
 
-        const captainColIndex = columnToIndex(qualifiersCaptainDiscordStartingColumn);
         const lobbyIdIndex = columnToIndex(qualifiersLobbyIdColumn);
         const dateColIndex = columnToIndex(qualifiersDateColumn);
         const timeColIndex = columnToIndex(qualifiersTimeColumn);
+        const captainColIndex = columnToIndex(qualifiersCaptainDiscordStartingColumn);
 
-        const rowLength = Math.max(captainColIndex + 1, lobbyIdIndex + 1, dateColIndex + 1, timeColIndex + 1);
-        const newRow = new Array(rowLength).fill('');
+        // Build a minimal row covering only the lobby metadata columns (A/B/C).
+        // Do NOT pad with empty strings beyond that — it would overwrite formula cells.
+        const metaLength = Math.max(lobbyIdIndex, dateColIndex, timeColIndex) + 1;
+        const newRow = new Array(metaLength).fill('');
         newRow[lobbyIdIndex] = newLobbyId;
         newRow[dateColIndex] = parsed.dateStr;
         newRow[timeColIndex] = parsed.timeStr;
-        newRow[captainColIndex] = interaction.user.id;
 
-        await appendSpreadsheetData(qualifiersSheet, [newRow]);
+        // Append only the metadata columns, getting back the row number that was written.
+        const appendResponse = await appendSpreadsheetData(qualifiersSheet, [newRow]);
+
+        // Extract the new row number from the updatedRange (e.g. "'_bot_quals'!A5:C5" → 5)
+        const updatedRange = appendResponse.data.updates.updatedRange;
+        const newRowNumber = parseInt(updatedRange.match(/(\d+)(?::\w+\d+)?$/)[1]);
+
+        // Write the captain ID directly into its cell — skips formula columns entirely.
+        const captainColumn = indexToColumn(captainColIndex);
+        const captainRange = `'${qualifiersSheet}'!${captainColumn}${newRowNumber}:${captainColumn}${newRowNumber}`;
+        await updateSpreadsheetData(captainRange, [[interaction.user.id]]);
 
         replyContent += `:white_check_mark: Custom lobby **${newLobbyId}** created and scheduled at <t:${Math.floor(parsed.unixTime)}:f>.`;
         interaction.editReply({ content: replyContent, ephemeral: true });

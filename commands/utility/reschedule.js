@@ -129,7 +129,7 @@ module.exports = {
 
         const oldDateStr = matchRow[columnToIndex(dateColumn)];
         const oldTimeStr = timeColumn ? matchRow[columnToIndex(timeColumn)] : null;
-        const unix_oldDateTime = parseSheetDateTimeToUnix(oldDateStr, oldTimeStr) ?? oldDateStr;
+        const unix_oldDateTime = parseSheetDateTimeToUnix(oldDateStr, oldTimeStr, config.timezone) ?? oldDateStr;
 
         const embed = new EmbedBuilder()
             .setColor("#0099ff")

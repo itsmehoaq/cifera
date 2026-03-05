@@ -273,3 +273,7 @@ fabric.properties
 service-account.json
 config.json
 sheets-config.json
+
+.DS_Store
+.idea
+.vscode

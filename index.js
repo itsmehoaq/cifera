@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { google } = require("googleapis");
 const config = require("./config.json");
-const { match_ping } = require('./commands/utility/matchPing.js');
+const { match_ping, qualifiers_ping } = require('./commands/utility/matchPing.js');
 
 const client = new Client({
   intents: [
@@ -38,6 +38,7 @@ client.once("ready", () => {
   // Set up a scheduler to check for matches every minute
   setInterval(() => {
     match_ping(client);
+    qualifiers_ping(client);
   }, 60000); // 60000 ms = 1 minute
 });
 

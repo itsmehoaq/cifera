@@ -31,16 +31,16 @@ function checkDate(day, month, year, hour, minutes) {
 
 function parseAndAdjust(dateStr, timeStr, timezone) {
     const [day, month, year] = dateStr.split('/');
-    let [hourRaw, minute] = timeStr.split(':');
-
-    let hour = (parseInt(hourRaw) - timezone + 24) % 24;
+    const [hourRaw, minute] = timeStr.split(':');
+    const hour = parseInt(hourRaw);
 
     if (!checkDate(day, month, year, hour, minute)) return null;
 
     const d = parseInt(day), m = parseInt(month), y = parseInt(year);
     const min = parseInt(minute);
 
-    const unixTime = new Date(y, m - 1, d, hour, min).getTime() / 1000;
+    const localUnix = Date.UTC(y, m - 1, d, hour, min) / 1000;
+    const unixTime = localUnix - timezone * 3600;
 
     const paddedHour = String(hour).padStart(2, '0');
     const paddedMin = String(min).padStart(2, '0');
@@ -54,12 +54,13 @@ function parseAndAdjust(dateStr, timeStr, timezone) {
     };
 }
 
-function parseSheetDateTimeToUnix(dateStr, timeStr) {
+function parseSheetDateTimeToUnix(dateStr, timeStr, timezone = 0) {
     if (!dateStr || !timeStr) return null;
     const [day, month, year] = dateStr.split('/').map(Number);
     const [hour, minute] = timeStr.split(':').map(Number);
     if ([day, month, year, hour, minute].some(isNaN)) return null;
-    return new Date(year, month - 1, day, hour, minute).getTime() / 1000;
+    const localUnix = Date.UTC(year, month - 1, day, hour, minute) / 1000;
+    return localUnix - timezone * 3600;
 }
 
 module.exports = { checkDate, parseAndAdjust, parseSheetDateTimeToUnix };

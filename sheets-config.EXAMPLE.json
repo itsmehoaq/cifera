@@ -17,5 +17,7 @@
   "qualifiersLobbyIdColumn": "",
   "qualifiersDateColumn": "",
   "qualifiersTimeColumn": "",
-  "qualifiersCustomLobbyPrefix": ""
+  "qualifiersCustomLobbyPrefix": "",
+  "qualifiersRefereeColumn": "",
+  "qualifiersPingCheckColumn": ""
 }
