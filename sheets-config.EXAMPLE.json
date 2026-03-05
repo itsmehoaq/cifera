@@ -16,5 +16,6 @@
   "qualifiersCaptainDiscordStartingColumn": "",
   "qualifiersLobbyIdColumn": "",
   "qualifiersDateColumn": "",
-  "qualifiersTimeColumn": ""
+  "qualifiersTimeColumn": "",
+  "qualifiersCustomLobbyPrefix": ""
 }

@@ -31,4 +31,18 @@ async function updateSpreadsheetData(range, values) {
     return response;
 }
 
-module.exports = { getSpreadsheetData, updateSpreadsheetData };
+async function appendSpreadsheetData(sheetName, values) {
+    const spreadsheetId = config.spreadsheetId;
+    const response = await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `'${sheetName}'`,
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: {
+            "values": values,
+        },
+    });
+    return response;
+}
+
+module.exports = { getSpreadsheetData, updateSpreadsheetData, appendSpreadsheetData };
