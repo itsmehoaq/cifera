@@ -1,7 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
 const config = require("../../config.json");
 const sheetsConfig = require("../../sheets-config.json");
-const dateColumn = sheetsConfig.dateColumn;
+const bracketUnixColumn = sheetsConfig.bracketUnixColumn;
 const matchSheet = sheetsConfig.sheetName;
 const matchIdColumn = sheetsConfig.matchIdColumn;
 const teamAColumn = sheetsConfig.teamAColumn;
@@ -22,13 +22,13 @@ async function getUpcomingMatches(filters = {}) {
 
     let upcomingMatches = rows
       .filter((row) => {
-        const matchTimeUnix = row[columnToIndex(dateColumn)];
+        const matchTimeUnix = row[columnToIndex(bracketUnixColumn)];
         return matchTimeUnix && parseInt(matchTimeUnix) > currentUnixTime;
       })
       .map((row) => {
         return {
           matchId: row[columnToIndex(matchIdColumn)],
-          matchTimeUnix: parseInt(row[columnToIndex(dateColumn)]),
+          matchTimeUnix: parseInt(row[columnToIndex(bracketUnixColumn)]),
           teamA: row[columnToIndex(teamAColumn)],
           teamB: row[columnToIndex(teamBColumn)],
           referee: row[columnToIndex(refereeColumn)],
